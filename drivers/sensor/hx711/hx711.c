@@ -330,8 +330,8 @@ static int hx711_channel_get(const struct device *dev, enum sensor_channel chan,
 
 	switch (hx711_chan) {
 	case HX711_SENSOR_CHAN_WEIGHT: {
-		val->val1 = sensor_value_to_double(&data->slope) * (data->reading - data->offset);
-		return 0;
+		double weight = sensor_value_to_double(&data->slope) * (data->reading - data->offset);
+		return sensor_value_from_double(val, weight);
 	}
 	default:
 		return -ENOTSUP;
