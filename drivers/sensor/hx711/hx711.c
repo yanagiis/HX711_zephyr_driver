@@ -10,13 +10,12 @@
 
 #include <string.h>
 
-#include <device.h>
-#include <drivers/gpio.h>
-#include <drivers/sensor.h>
-#include <irq.h>
-#include <logging/log.h>
-#include <sys/byteorder.h>
-#include <zephyr.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/irq.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/sys/byteorder.h>
 
 #define SAMPLE_FETCH_TIMEOUT_MS 600
 
@@ -187,8 +186,7 @@ static int hx711_attr_set_rate(struct hx711_data *data,
 	case HX711_RATE_10HZ:
 	case HX711_RATE_80HZ:
 		if (data->rate_gpio == NULL) {
-			LOG_ERR("Failed to get pointer to RATE device: %s",
-				DT_INST_GPIO_LABEL(0, rate_gpios));
+			LOG_ERR("Failed to get pointer to RATE device");
 			return -EINVAL;
 		}
 		data->rate = val->val1;
@@ -342,9 +340,9 @@ static int hx711_init(const struct device *dev)
 	struct hx711_data *data = dev->data;
 	const struct hx711_config *cfg = dev->config;
 
-	LOG_DBG("SCK GPIO port : %s\n", cfg->sck_ctrl);
+	LOG_DBG("SCK GPIO port : %s\n", cfg->sck_ctrl->name);
 	LOG_DBG("SCK Pin : %d\n", cfg->sck_pin);
-	LOG_DBG("DOUT GPIO port : %s\n", cfg->dout_ctrl);
+	LOG_DBG("DOUT GPIO port : %s\n", cfg->dout_ctrl->name);
 	LOG_DBG("DOUT Pin : %d\n", cfg->dout_pin);
 
 #if DT_INST_NODE_HAS_PROP(0, rate_gpios)
@@ -357,11 +355,7 @@ static int hx711_init(const struct device *dev)
 	LOG_DBG("Slope : %d.%d\n", data->slope.val1, data->slope.val2);
 
 	/* Configure SCK as output, LOW */
-	data->sck_gpio = device_get_binding(cfg->sck_ctrl);
-	if (data->sck_gpio == NULL) {
-		LOG_ERR("Failed to get GPIO device %s.", cfg->sck_ctrl);
-		return -EINVAL;
-	}
+	data->sck_gpio = cfg->sck_ctrl;
 	LOG_DBG("SCK pin controller is %p, name is %s\n", data->sck_gpio,
 		data->sck_gpio->name);
 
@@ -396,12 +390,7 @@ static int hx711_init(const struct device *dev)
 	k_sem_init(&data->dout_sem, 1, 1);
 
 	/* Configure DOUT as input */
-	data->dout_gpio = device_get_binding(cfg->dout_ctrl);
-	if (data->dout_gpio == NULL) {
-		LOG_ERR("Failed to get GPIO device %s.", cfg->dout_ctrl);
-		return -EINVAL;
-	}
-
+	data->dout_gpio = cfg->sck_ctrl;
 	LOG_DBG("DOUT pin controller is %p, name is %s\n", data->dout_gpio,
 		data->dout_gpio->name);
 	ret = gpio_pin_configure(data->dout_gpio, cfg->dout_pin,
@@ -599,11 +588,13 @@ static const struct sensor_driver_api hx711_api = {
 	};                                                                     \
 	static const struct hx711_config hx711_config_##n = {                  \
 		.dout_pin = DT_INST_GPIO_PIN(n, dout_gpios),                   \
-		.dout_ctrl = DT_INST_GPIO_LABEL(n, dout_gpios),                \
+		.dout_ctrl = DEVICE_DT_GET(                                    \
+			DT_GPIO_CTLR(DT_DRV_INST(n), dout_gpios)),             \
 		.dout_flags = DT_INST_GPIO_FLAGS(n, dout_gpios),               \
                                                                                \
 		.sck_pin = DT_INST_GPIO_PIN(n, sck_gpios),                     \
-		.sck_ctrl = DT_INST_GPIO_LABEL(n, sck_gpios),                  \
+		.sck_ctrl = DEVICE_DT_GET(                                     \
+			DT_GPIO_CTLR(DT_DRV_INST(n), sck_gpios)),              \
 		.sck_flags = DT_INST_GPIO_FLAGS(n, sck_gpios),                 \
                                                                                \
 		HX711_INIT_RATE_GPIOS(n)};                                     \
