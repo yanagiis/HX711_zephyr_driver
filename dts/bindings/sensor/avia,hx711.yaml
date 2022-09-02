@@ -28,6 +28,3 @@ properties:
     required: false
     description: |
       Pin on which sampling rate is chosen.
-
-  label:
-    required: true
